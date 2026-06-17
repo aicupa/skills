@@ -79,6 +79,78 @@ Host responds with a `plugin-tree-update` message containing the current tree.
 </script>
 ```
 
+## Head View: Client-Side Tree Analysis Pattern
+
+Head views receive `plugin-tree-update` on every tree change. For lightweight analysis (counting, filtering), do it **directly in the view** to avoid the `callPlugin` round-trip latency:
+
+```html
+<script>
+  function analyzeTree(tree) {
+    if (!Array.isArray(tree)) return null
+    const stats = { totalPending: 0, focusCount: 0 }
+    const traverse = (nodes) => {
+      for (const node of nodes) {
+        const item = node?.todo
+        if (!item) { if (node?.children?.length) traverse(node.children); continue }
+        if (!item.done) {
+          stats.totalPending++
+          if (item.focus) stats.focusCount++
+        }
+        if (node.children?.length) traverse(node.children)
+      }
+    }
+    traverse(tree)
+    return stats
+  }
+
+  window.addEventListener('message', (event) => {
+    if (event.data?.type === 'plugin-tree-update') {
+      const result = analyzeTree(event.data.tree || [])
+      render(result)  // Update DOM directly
+    }
+  })
+</script>
+```
+
+Keep the service for heavy operations (file I/O, cross-file queries, clipboard). Use client-side analysis when the view only needs to read tree data and render.
+
+## Language Detection
+
+The `plugin-init` message may include a `lang` field reflecting the app's current locale. Fall back to `navigator.language`:
+
+```javascript
+window.addEventListener('message', (event) => {
+  if (event.data?.type === 'plugin-init') {
+    const detected = (event.data.lang || navigator.language || 'en').toLowerCase()
+    if (detected.startsWith('zh-tw') || detected.startsWith('zh-hant')) lang = 'zh-TW'
+    else if (detected.startsWith('zh')) lang = 'zh'
+    else if (detected.startsWith('ja')) lang = 'ja'
+    // ... other languages
+    else lang = 'en'
+  }
+})
+```
+
+For multi-language head views, embed an i18n object keyed by locale and use this detected `lang` to select translations.
+
+## Dark Mode Detection
+
+Beyond applying `theme.color` and `theme.backgroundColor`, you can detect dark mode from the background color to apply CSS class switches:
+
+```javascript
+if (msg.theme?.backgroundColor) {
+  const bg = msg.theme.backgroundColor
+  const isDark = typeof bg === 'string' && (
+    bg.includes('rgb')
+      ? parseInt(bg.split(',')[0].replace(/\D/g, '')) < 128
+      : bg.startsWith('#') && parseInt(bg.slice(1, 3), 16) < 128
+  )
+  if (isDark) document.body.classList.add('dark')
+}
+```
+
+Then use `.dark .tag-red { ... }` in CSS for dark-mode-specific styles instead of inline color overrides.
+
 ## Pitfalls
 
 ### Timeout on callPlugin
