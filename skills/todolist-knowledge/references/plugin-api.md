@@ -152,6 +152,34 @@ Complete topbar view `package.json` example:
 }
 ```
 
+### views.topfix
+
+Render plugin view in a fixed position between the filter area and the tree content:
+
+```json
+"views": { "topfix": true }
+```
+
+Topfix views use the same protocol as head/topbar views. The difference is position:
+- **head**: full-width block iframe above the progress bar
+- **topbar**: inline iframe in the PageTitle area
+- **topfix**: full-width block iframe between filters and tree content
+
+Topfix views are hidden (but still mounted and receiving events) while the todolist is loading.
+
+Complete topfix view `package.json` example:
+
+```json
+{
+  "name": "@aicupa/plugin-task-line",
+  "version": "1.0.0",
+  "main": "./service",
+  "view": "./view",
+  "pluginContributes": { "views": { "topfix": true } },
+  "dependencies": { "@aicupa/api": "^1.0.1" }
+}
+```
+
 ## Installation & Storage
 
 - **npm**: Plugins with `@aicupa/plugin-` prefix can be searched/installed from the Plugin Marketplace
