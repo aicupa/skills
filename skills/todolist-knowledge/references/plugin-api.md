@@ -123,7 +123,34 @@ Complete head view `package.json` example:
 }
 ```
 
-For head views that only analyze and display tree data, the service can be minimal (or empty) — do analysis client-side in the view using `plugin-tree-update` data. See `plugin-view.md` → "Head View: Client-Side Tree Analysis Pattern".
+For head views that only analyze and display tree data, the service can be minimal (or empty) — do analysis client-side in the view using `plugin-tree-update` data. See `plugin-view.md` → "Client-Side Tree Analysis Pattern".
+
+### views.topbar
+
+Render plugin view inline in the page title bar (top-right area, alongside the navigator):
+
+```json
+"views": { "topbar": true }
+```
+
+Topbar views use the same protocol as head views (`plugin-init`, `plugin-tree-update`, `plugin-call`/`plugin-result`). The difference is rendering position and layout:
+- **head**: full-width block iframe above the progress bar
+- **topbar**: inline iframe in the PageTitle area, auto-sized to content width and height
+
+Topbar views are hidden (but still mounted and receiving events) while the todolist is loading. Only shown on non-mobile, non-simple-mode views.
+
+Complete topbar view `package.json` example:
+
+```json
+{
+  "name": "@aicupa/plugin-my-indicator",
+  "version": "1.0.0",
+  "main": "./service",
+  "view": "./view",
+  "pluginContributes": { "views": { "topbar": true } },
+  "dependencies": { "@aicupa/api": "^1.0.1" }
+}
+```
 
 ## Installation & Storage
 
