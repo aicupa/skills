@@ -49,6 +49,7 @@ module.exports = function (api) {
 | `api.base64.decode(str)` | Decode base64 to string |
 | `api.clipboard.writeText(text)` | Write text to clipboard |
 | `api.clipboard.readText()` | Read text from clipboard |
+| `api.setBackground({ backgroundImage?, backgroundOp?, backgroundSize? })` | Set the app background image, opacity, and/or CSS background-size. Saves to config and updates all windows immediately |
 | `api.isWindows` | `true` if running on Windows |
 
 ## Return Format

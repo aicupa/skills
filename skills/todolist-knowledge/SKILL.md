@@ -64,6 +64,7 @@ The desktop app stores global configuration in `~/.todoListNative.json`. Read vi
   "token": "cloud-sync-token",
   "backgroundImage": "https://example.com/bg.jpg",
   "backgroundOp": "8",
+  "backgroundSize": "cover",
   "backupSize": "9.5",
   "workPendTimeMax": "9.5",
   "noticeKey": "20260617",
@@ -92,6 +93,7 @@ The desktop app stores global configuration in `~/.todoListNative.json`. Read vi
 | `token` | `string\|null` | Cloud sync auth token (set via `SetToken`, cleared via `ClearToken`) |
 | `backgroundImage` | `string` | URL of the custom background image |
 | `backgroundOp` | `string` | Background opacity (`"0"`–`"10"`, as string) |
+| `backgroundSize` | `string` | CSS `background-size` for the background image (e.g. `"cover"`, `"contain"`, `"100% auto"`) — defaults to `cover` in CSS |
 | `backupSize` | `string` | Max backup size in MB (as string, e.g. `"9.5"`) |
 | `workPendTimeMax` | `string` | Max work duration in hours before overtime alert (as string, e.g. `"9.5"`) |
 | `dailyInfo` | `{date, start}` | Today's work session — `date` is `"MM-DD"`, `start` is Unix ms timestamp |
@@ -148,7 +150,7 @@ module.exports = createPlugin((api) => ({
 }))
 ```
 
-Key APIs: `api.getTree()`, `api.reload()`, `api.store()`, `api.readFile()`, `api.writeFile()`, `api.clipboard.writeText()/.readText()`, `api.base64.encode()/.decode()`, `api.mapTree()`.
+Key APIs: `api.getTree()`, `api.reload()`, `api.store()`, `api.readFile()`, `api.writeFile()`, `api.clipboard.writeText()/.readText()`, `api.base64.encode()/.decode()`, `api.mapTree()`, `api.setBackground()`.
 
 Return format: `{ ok: true, result: ... }` or `{ ok: false, error: "..." }`.
 
