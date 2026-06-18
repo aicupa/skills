@@ -1,0 +1,19 @@
+skills/todolist-knowledge/SKILL.md
+  s_e3998ab1eb4650::t_c8b43daf0039fc 47-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "14d93057ebd83a7ec0d2a474a91024269480af5b",
+  "prompts": {},
+  "sessions": {
+    "s_e3998ab1eb4650": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "555facd0-cd0d-44fb-a27a-8d8150099155",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "muhai <muhai.li@tuya.com>"
+    }
+  }
+}
