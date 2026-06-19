@@ -154,7 +154,7 @@ module.exports = (api) => ({
 })
 ```
 
-Key APIs: `api.getTree()`, `api.reload()`, `api.store()`, `api.readFile()`, `api.writeFile()`, `api.fetch()`, `api.clipboard.writeText()/.readText()`, `api.base64.encode()/.decode()`, `api.mapTree()`, `api.setBackground()`.
+Key APIs: `api.getTree()`, `api.reload()`, `api.store()`, `api.readFile()`, `api.writeFile()`, `api.fetch()`, `api.fs`, `api.os`, `api.path`, `api.clipboard.writeText()/.readText()`, `api.base64.encode()/.decode()`, `api.mapTree()`, `api.setBackground()`.
 
 Return format: `{ ok: true, result: ... }` or `{ ok: false, error: "..." }`.
 

@@ -40,7 +40,10 @@ module.exports = (api) => {
 | `api.base64.decode(str)` | Decode base64 to string |
 | `api.clipboard.writeText(text)` | Write text to clipboard |
 | `api.clipboard.readText()` | Read text from clipboard |
-| `api.fetch(url, options?)` | HTTP request via Node.js backend. Options: `{ method?, headers?, body?, timeout? }`. Returns `{ ok, status, statusText, headers, body }` |
+| `api.fs` | Node.js `fs` module — direct access to file system APIs |
+| `api.os` | Node.js `os` module — `homedir()`, `platform()`, etc. |
+| `api.path` | Node.js `path` module — `join()`, `resolve()`, `dirname()`, etc. |
+| `api.fetch(url, options?)` | HTTP request via Node.js native fetch. Options: `{ method?, headers?, body?, timeout? }`. Returns `{ ok, status, statusText, headers, body }` |
 | `api.setBackground({ backgroundImage?, backgroundOp?, backgroundSize? })` | Set the app background image, opacity, and/or CSS background-size. Saves to config and updates all windows immediately |
 | `api.isWindows` | `true` if running on Windows |
 
