@@ -128,29 +128,33 @@ Key `package.json` fields:
   "version": "1.0.0",
   "view": "./view",
   "main": "./service",
+  "viewjs": "./inject.js",
   "viewSize": { "width": 800, "height": 600 },
   "pluginContributes": {
     "contextMenus": [{ "title": "Action", "title_zh": "操作", "command": "methodName" }],
     "events": { "paste": { "check": "checkMethod", "handler": "handleMethod" } },
     "views": { "head": true }
-  },
-  "dependencies": { "@aicupa/api": "^1.0.1" }
+  }
 }
 ```
 
-Service pattern:
+- `viewjs` (optional): Path to a JS file that will be injected into the app's `document.head` as a `<script>` tag when plugins load. Runs in the main app context (not iframe).
+
+Service pattern (use JSDoc for type hints):
 
 ```javascript
-const { createPlugin } = require('@aicupa/api')
-module.exports = createPlugin((api) => ({
+/**
+ * @param {import('@aicupa/api').PluginApi} api
+ */
+module.exports = (api) => ({
   async myMethod(params) {
     const tree = await api.getTree(params.filePath)
     return { ok: true, result: tree }
   }
-}))
+})
 ```
 
-Key APIs: `api.getTree()`, `api.reload()`, `api.store()`, `api.readFile()`, `api.writeFile()`, `api.clipboard.writeText()/.readText()`, `api.base64.encode()/.decode()`, `api.mapTree()`, `api.setBackground()`.
+Key APIs: `api.getTree()`, `api.reload()`, `api.store()`, `api.readFile()`, `api.writeFile()`, `api.fetch()`, `api.clipboard.writeText()/.readText()`, `api.base64.encode()/.decode()`, `api.mapTree()`, `api.setBackground()`.
 
 Return format: `{ ok: true, result: ... }` or `{ ok: false, error: "..." }`.
 

@@ -2,27 +2,18 @@
 
 ## Service Pattern
 
-The `api` object is injected into the service factory. Use `createPlugin` from `@aicupa/api` for type hints:
+The `api` object is injected into the service factory. Use JSDoc `@param {import('@aicupa/api').PluginApi}` for type hints:
 
 ```javascript
-const { createPlugin } = require('@aicupa/api')
-
-module.exports = createPlugin((api) => {
+/**
+ * @param {import('@aicupa/api').PluginApi} api
+ */
+module.exports = (api) => {
   return {
     async myMethod(params) {
       const tree = await api.getTree(params.filePath)
       return { ok: true, result: tree }
     }
-  }
-})
-```
-
-`createPlugin` is an identity function at runtime — it only provides TypeScript/IDE inference. Plain export also works:
-
-```javascript
-module.exports = function (api) {
-  return {
-    async myMethod(params) { return { ok: true } }
   }
 }
 ```
@@ -49,6 +40,7 @@ module.exports = function (api) {
 | `api.base64.decode(str)` | Decode base64 to string |
 | `api.clipboard.writeText(text)` | Write text to clipboard |
 | `api.clipboard.readText()` | Read text from clipboard |
+| `api.fetch(url, options?)` | HTTP request via Node.js backend. Options: `{ method?, headers?, body?, timeout? }`. Returns `{ ok, status, statusText, headers, body }` |
 | `api.setBackground({ backgroundImage?, backgroundOp?, backgroundSize? })` | Set the app background image, opacity, and/or CSS background-size. Saves to config and updates all windows immediately |
 | `api.isWindows` | `true` if running on Windows |
 
@@ -119,8 +111,7 @@ Complete head view `package.json` example:
   "main": "./service",
   "view": "./view",
   "viewSize": { "width": 600, "height": 40 },
-  "pluginContributes": { "views": { "head": true } },
-  "dependencies": { "@aicupa/api": "^1.0.1" }
+  "pluginContributes": { "views": { "head": true } }
 }
 ```
 
@@ -148,8 +139,7 @@ Complete topbar view `package.json` example:
   "version": "1.0.0",
   "main": "./service",
   "view": "./view",
-  "pluginContributes": { "views": { "topbar": true } },
-  "dependencies": { "@aicupa/api": "^1.0.1" }
+  "pluginContributes": { "views": { "topbar": true } }
 }
 ```
 
@@ -176,14 +166,26 @@ Complete topfix view `package.json` example:
   "version": "1.0.0",
   "main": "./service",
   "view": "./view",
-  "pluginContributes": { "views": { "topfix": true } },
-  "dependencies": { "@aicupa/api": "^1.0.1" }
+  "pluginContributes": { "views": { "topfix": true } }
 }
 ```
+
+## viewjs — Inject Script
+
+The `viewjs` field in `package.json` points to a JS file that gets injected into the app's `document.head` as a `<script>` tag when plugins load. Unlike views (iframe-sandboxed), `viewjs` runs in the main app context.
+
+```json
+{
+  "name": "@aicupa/plugin-my-plugin",
+  "viewjs": "./inject.js"
+}
+```
+
+The injected `<script>` has `data-plugin="pluginName"` attribute for identification.
 
 ## Installation & Storage
 
 - **npm**: Plugins with `@aicupa/plugin-` prefix can be searched/installed from the Plugin Marketplace
 - **Local**: Plugin icon → Plugin Market → Install from local → select directory
 - **Storage**: `~/.todoListNative/plugins/` (plugins), `~/.todoListNative/plugins.json` (registry)
-- `@aicupa/api` is auto-provisioned at `~/.todoListNative/plugins/node_modules/@aicupa/api/`
+- **Type hints**: Use JSDoc `@param {import('@aicupa/api').PluginApi} api` for IDE type inference — `@aicupa/api` is a types-only package (install via npm for development)
