@@ -1,6 +1,6 @@
 ---
 name: todolist-knowledge
-description: Todolist desktop app knowledge — .todo file format, plugin system, plugin API, view protocol, and plugin contributes. Use this skill whenever working with .todo files, building or debugging Todolist plugins, implementing plugin views or head views, or working with the Todolist plugin API and contributes system (context menus, events, views). Also use when users mention todolist format, todo tree structure, plugin service methods, or plugin iframe communication.
+description: Todolist desktop app knowledge — .todo file format, plugin system, plugin API, view protocol, communication architecture patterns, and plugin contributes. Use this skill whenever working with .todo files, building or debugging Todolist plugins, implementing plugin views or head views, choosing a plugin architecture (view+service, inject-only, view+inject, etc.), implementing plugin communication (postMessage RPC, localStorage bridge, inject.js patterns, tree-update push model), or working with the Todolist plugin API and contributes system (context menus, events, views). Also use when users mention todolist format, todo tree structure, plugin service methods, plugin iframe communication, inject.js, callPlugin, double-unwrap, or plugin architecture selection.
 ---
 
 # Todolist Knowledge
@@ -14,6 +14,7 @@ Reference for working with the Todolist desktop app (Electron). This skill cover
 | `references/todo-format.md` | Working with `.todo` files — full type definitions, field details, tag system, examples, common operations |
 | `references/plugin-api.md` | Building plugin services — full API method table, pluginContributes spec (contextMenus, events, views.head, views.topbar, views.topfix), installation |
 | `references/plugin-view.md` | Building plugin views — message protocol, complete HTML template, client-side tree analysis pattern, i18n/lang detection, dark mode detection, pitfalls (timeout, double-unwrap, auto-height, theme) |
+| `references/plugin-communication.md` | Plugin communication architecture patterns — 7 architecture types (view+service, service-only, inject-only, view+inject, triple-layer, client-side tree analysis, remote view), communication patterns (callPlugin RPC, double-unwrap, view-to-inject messaging, localStorage bridge, push-based tree updates, graceful degradation), inject.js patterns (singleton guard, DOM injection, MutationObserver, draggable widgets), common pitfalls, decision flowchart |
 
 ## Quick Reference
 
@@ -159,6 +160,63 @@ Key APIs: `api.getTree()`, `api.reload()`, `api.store()`, `api.readFile()`, `api
 Return format: `{ ok: true, result: ... }` or `{ ok: false, error: "..." }`.
 
 For full API table, pluginContributes spec, and installation details, read `references/plugin-api.md`.
+
+### Plugin Architecture Types
+
+Plugins fall into one of 7 archetypes based on which layers they use:
+
+| Architecture | view | inject.js | service | Use Case |
+|-------------|------|-----------|---------|----------|
+| View + Service | iframe UI | — | Node.js backend | Settings panel + file I/O, API calls, config |
+| Service-Only | stub | — | Node.js backend | Context menu / paste event handlers, tree transforms |
+| Inject-Only | stub | host DOM | stub | Visual effects, floating widgets, audio players |
+| View + Inject | iframe UI | host DOM | — | Settings panel + visual effects (localStorage bridge) |
+| View + Inject + Service | iframe UI | host DOM | Node.js backend | Full-stack: settings + effects + file/API access |
+| Client-Side Tree Analysis | head/topbar/topfix | — | stub | Display-only indicators from tree data |
+| Remote View | external URL | — | — | Embed external web app in a BrowserWindow |
+
+Choose architecture using this decision flow:
+- Need host DOM effects? → inject.js required
+- Need Node.js capabilities (file I/O, `api.fetch()`, clipboard)? → service required
+- Need settings UI panel? → view required
+- Only reading tree data for display? → Client-Side Tree Analysis (no service needed)
+
+For full details, decision flowchart, and code patterns, read `references/plugin-communication.md`.
+
+### Plugin Communication Patterns
+
+**callPlugin RPC** — The standard view→service call pattern. Always include a 2s timeout:
+
+```javascript
+function callPlugin(method, params) {
+  return new Promise((resolve, reject) => {
+    const id = ++callId
+    const timer = setTimeout(() => { delete pending[id]; reject(new Error('timeout')) }, 2000)
+    pending[id] = {
+      resolve: (v) => { clearTimeout(timer); resolve(v) },
+      reject: (e) => { clearTimeout(timer); reject(e) }
+    }
+    window.parent.postMessage({ type: 'plugin-call', id, method, params }, '*')
+  })
+}
+```
+
+**Double-unwrap results** — Service returns `{ ok, result }`, host wraps again:
+
+```javascript
+function unwrap(res) {
+  const inner = res?.result || res
+  return inner?.result !== undefined ? inner.result : inner
+}
+```
+
+**View→Inject messaging** — inject.js listens on host window for `postMessage` from view iframe. Use `localStorage` + `postMessage` dual write for persistence + real-time sync.
+
+**localStorage bridge** — Shared state between view iframe and inject.js. Use `storage` event for cross-tab reactivity. Namespace keys with plugin prefix.
+
+**inject.js essentials** — Singleton guard (`window.__MY_PLUGIN__`), DOM dedup (`getElementById` before create), `MutationObserver` for SPA resilience, `position: fixed` + `pointer-events: none` for overlays.
+
+For complete patterns, inject.js templates, and pitfall details, read `references/plugin-communication.md`.
 
 ### Plugin View Communication
 
