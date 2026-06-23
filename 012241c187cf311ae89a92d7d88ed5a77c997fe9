@@ -1,0 +1,26 @@
+skills/todolist-knowledge/SKILL.md
+  s_d0b97cab302c33::t_57ab5b2b24785e 131,137,141-143,146-149,154,157
+skills/todolist-knowledge/references/plugin-api.md
+  s_d0b97cab302c33::t_d8c0de01c2f6f5 43
+  s_d0b97cab302c33::t_910ddfd523703b 5,8-11
+  s_d0b97cab302c33::t_326204d0b7ca9a 114
+  s_d0b97cab302c33::t_2b2a85cb8bc4e7 142
+  s_d0b97cab302c33::t_58cfb4a0c0615d 169
+  s_d0b97cab302c33::t_80161d766e6bf4 173-185,191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "012241c187cf311ae89a92d7d88ed5a77c997fe9",
+  "prompts": {},
+  "sessions": {
+    "s_d0b97cab302c33": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7662d065-7cef-47c2-a1e2-79189f926a4a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "muhai <muhai.li@tuya.com>"
+    }
+  }
+}
