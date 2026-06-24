@@ -1,122 +1,6 @@
 # Plugin Communication Patterns — Full Reference
 
-Patterns and techniques extracted from 14 real-world plugins. Use this reference when building plugin communication logic, choosing an architecture, or debugging message flow.
-
-## Architecture Types
-
-Every plugin falls into one of these archetypes. Choose based on what the plugin needs to do.
-
-### 1. View + Service (Standard Panel)
-
-The view iframe communicates with the service via the host's postMessage bridge. Use when the plugin needs a settings/interaction panel AND Node.js capabilities (file I/O, HTTP proxy, clipboard, config access).
-
-```
-view/index.html  ──postMessage──>  Host App  ──pluginCallService──>  service.js
-     (iframe)    <──plugin-result──           <──{ ok, result }──     (Node.js)
-```
-
-**Examples:** plugin-background-images, plugin-auth-msc, plugin-balance, todolist-plugin-demo (plugin-overdue-tasks)
-
-**When to use:**
-- The view needs data from the filesystem, external APIs (via `api.fetch()`), or app config
-- The plugin needs to persist state across restarts (via `api.fs` or `api.store()`)
-- The plugin needs to modify app state (`api.setBackground()`, `api.reload()`, `api.store()`)
-
-### 2. Service-Only (No View)
-
-All logic lives in the service. The host invokes methods through `pluginContributes` (context menus, paste events). The view is a stub or absent.
-
-```
-Host App  ──contextMenu/event──>  service.js
-          <──{ ok, result }──     (Node.js)
-```
-
-**Examples:** plugin-cut
-
-**When to use:**
-- The plugin operates on tree data (cut/paste, sort, transform)
-- Triggered by context menu or paste events, not by a UI panel
-- No visual output needed beyond what the host provides
-
-### 3. Inject-Only (Host DOM Manipulation)
-
-All logic lives in `inject.js`, which runs in the host page context. The service and view are empty stubs. Use for visual effects, floating widgets, or audio that must live in the host DOM.
-
-```
-inject.js  ──directly manipulates──>  Host DOM
-(runs in host context, not sandboxed)
-```
-
-**Examples:** plugin-bg-music
-
-**When to use:**
-- The plugin adds visual/audio effects to the host page (particles, overlays, music players)
-- No settings panel is needed (or settings are minimal, handled in inject.js itself)
-- The effect must persist across SPA navigation
-
-### 4. View + Inject (No Service)
-
-The view iframe provides a settings UI; inject.js provides the visual effect in the host DOM. They communicate via `postMessage` (view→parent→inject.js listener) and/or `localStorage` as shared state. The service is empty or absent.
-
-```
-view/index.html  ──postMessage──>  window.parent  ──message event──>  inject.js
-     (iframe)    ──localStorage──>                 <──localStorage──   (host DOM)
-```
-
-**Examples:** plugin-anime-border, plugin-cursor-glow, plugin-font-switcher
-
-**When to use:**
-- The plugin has a visual effect in the host DOM AND a settings panel
-- No Node.js capabilities are needed (no file I/O, no HTTP proxy)
-- State can be persisted in localStorage
-
-### 5. View + Inject + Service (Triple Layer)
-
-All three layers are active. The view provides settings UI, inject.js provides host DOM effects, and the service provides Node.js capabilities (file persistence, API calls).
-
-```
-view/index.html  ──postMessage──>  Host App  ──pluginCallService──>  service.js
-     (iframe)    ──postMessage──>  inject.js (host DOM)               (Node.js)
-                 ──localStorage──> inject.js
-```
-
-**Examples:** plugin-weather, plugin-live2d
-
-**When to use:**
-- The plugin needs all three: settings UI, host DOM manipulation, AND Node.js capabilities
-- Example: a weather widget with a config panel (view), a floating display (inject.js), and API/file access (service)
-
-### 6. Client-Side Tree Analysis (Head/Topbar/Topfix View)
-
-The view receives tree data via `plugin-tree-update` push messages and does all analysis client-side. The service is an empty stub. No `callPlugin` RPC needed.
-
-```
-Host App  ──plugin-init──>      view/index.html (iframe)
-          ──plugin-tree-update──>   (client-side analysis)
-          <──plugin-request-tree──
-```
-
-**Examples:** plugin-task-line (topfix), plugin-todo-warning (topbar)
-
-**When to use:**
-- The plugin only needs to READ and DISPLAY tree data
-- Analysis is lightweight (counting, filtering, sorting)
-- Avoiding `callPlugin` round-trip latency is important for responsive head/topbar indicators
-
-### 7. Remote View (External URL)
-
-The view points to an external URL, which opens in a separate BrowserWindow. No postMessage bridge, no sandbox.
-
-```
-package.json: "view": "https://example.com/app/"
-──> Opens in separate BrowserWindow (no plugin bridge)
-```
-
-**Examples:** plugin-editor
-
-**When to use:**
-- Embedding an existing external web app
-- No host integration needed beyond launching the window
+Patterns and techniques for plugin communication, extracted from 14 real-world plugins. For architecture type selection (View+Service, Inject-Only, etc.), see `plugin-architecture.md`.
 
 ## Communication Patterns
 
@@ -316,6 +200,174 @@ async function loadData() {
 
 **Example:** plugin-auth-msc uses this pattern — tries the service first, falls back to encrypted localStorage if the service isn't ready.
 
+### Pattern 8: Hidden Head View Bridge (inject.js → service, fallback approach)
+
+> **Prefer Pattern 11 (`plugin-call-service` CustomEvent)** if you can modify the main framework. It's simpler and doesn't require a head view.
+
+inject.js runs in the main window context, not in an iframe. The host's `plugin-call` handler at `usePluginContributes.ts:161-172` verifies `entries[i][1].contentWindow === source` — since inject.js's message source is `window` (not an iframe `contentWindow`), the host **rejects** all `plugin-call` messages from inject.js. This means inject.js cannot call service methods via the standard `callPlugin` RPC.
+
+**Fallback solution (no main framework changes):** Use a hidden head view iframe (height 0, always loaded) as a relay:
+
+```javascript
+// In head view (bridge) — view/index.html in head mode
+window.parent.postMessage({ type: 'tdep-bridge-ready' }, '*')
+
+window.addEventListener('message', async (e) => {
+  if (e.data?.type === 'tdep-save') {
+    const result = await callPlugin('saveDeps', e.data)
+    window.parent.postMessage({ type: 'tdep-save-result', result }, '*')
+  }
+})
+
+// In inject.js — save bridgeWindow reference
+let bridgeWindow = null
+window.addEventListener('message', e => {
+  if (e.data?.type === 'tdep-bridge-ready' && e.source && e.source !== window) {
+    bridgeWindow = e.source
+  }
+})
+
+// Later: send commands through the bridge
+bridgeWindow.postMessage({ type: 'tdep-save', todoId: 123, depIds: [1, 2] }, '*')
+```
+
+**Key implementation details:**
+- Check `e.source !== window` when receiving bridge-ready — inject.js's own messages also hit the listener
+- The head view is always loaded (unlike panel views which only exist when opened), so the bridge is always available
+- Use custom message types (e.g. `tdep-save`, not `plugin-call`) to avoid conflicts with the host bridge
+
+### Pattern 9: CustomEvent Bridge for inject.js
+
+inject.js cannot receive `postMessage` results from service calls (no iframe to route back to). For certain data flows, the main framework dispatches `CustomEvent` on `window` that inject.js can listen to.
+
+**Context menu command results:**
+```javascript
+// Main framework dispatches after contextMenu command completes:
+window.dispatchEvent(new CustomEvent('plugin-command-done', {
+  detail: { pluginName, command, result }
+}))
+
+// inject.js listens:
+window.addEventListener('plugin-command-done', e => {
+  const d = e.detail
+  if (d.command !== 'setDependency') return
+  // Double-unwrap: pluginCallService wraps result
+  const r = d.result?.result || d.result
+  if (!r?.target) return
+  showModal(r.target)
+})
+```
+
+**Tree update notifications:**
+```javascript
+// Main framework dispatches after tree changes:
+window.dispatchEvent(new CustomEvent('plugin-tree-updated'))
+
+// plugin-dropdown forwards to panel iframe:
+window.addEventListener('plugin-tree-updated', () => {
+  iframeRef.current?.contentWindow?.postMessage({ type: 'plugin-tree-update' }, '*')
+})
+```
+
+These CustomEvents require small additions to the main framework (2 `dispatchEvent` calls + 1 listener in `plugin-dropdown`).
+
+### Pattern 10: Hover-Based Lazy DOM Decorations
+
+Permanently injected DOM elements in todo items get wiped by React re-renders. MutationObserver + re-injection is fragile and creates flicker. Instead, show decorations only on hover using event delegation:
+
+```javascript
+let hoverWrap = null
+
+document.addEventListener('mouseover', e => {
+  const el = e.target.closest?.('[data-todowrapid]')
+  if (el === hoverWrap) return
+  if (hoverWrap) { removeTag(hoverWrap); hoverWrap = null }
+  if (!el) return
+  hoverWrap = el
+  showTag(el)
+})
+
+document.addEventListener('mouseout', e => {
+  if (!hoverWrap) return
+  const related = e.relatedTarget
+  if (related && hoverWrap.contains(related)) return
+  removeTag(hoverWrap)
+  hoverWrap = null
+})
+
+function showTag(wrapEl) {
+  const textEl = wrapEl.querySelector('[data-todoid]')
+  if (!textEl || textEl.querySelector('.my-tag')) return
+  const tag = document.createElement('span')
+  tag.className = 'my-tag'
+  tag.textContent = '...'
+  textEl.appendChild(tag)
+}
+```
+
+**Why this works:**
+- No permanent DOM mutation → immune to React re-renders
+- Event delegation on `document` → works for dynamically added todo items
+- `[data-todowrapid]` is the row-level `<Space>` wrapper, `[data-todoid]` is the inner `<Text>` element
+
+**Data source:** Cache dep/decoration data in a JS variable (populated via `plugin-call-service` CustomEvent or `localStorage`) and update on `plugin-tree-updated`. The hover handler reads from this cache — no async calls during hover.
+
+### Pattern 11: `plugin-call-service` CustomEvent (inject.js → service, preferred)
+
+A generic mechanism for inject.js to call any plugin service method via CustomEvent, without needing a head view bridge. Requires a one-time addition to the main framework.
+
+**Main framework side** (`todo-tree/index.tsx`):
+```javascript
+useEffect(() => {
+  const handler = async (e) => {
+    const { pluginName, method, params, callbackEvent } = e.detail || {}
+    if (!pluginName || !method) return
+    try {
+      const result = await callService('pluginCallService', { name: pluginName, method, params })
+      if (callbackEvent) window.dispatchEvent(new CustomEvent(callbackEvent, { detail: result }))
+    } catch (err) {
+      if (callbackEvent) window.dispatchEvent(new CustomEvent(callbackEvent, { detail: { ok: false, error: String(err) } }))
+    }
+  }
+  window.addEventListener('plugin-call-service', handler)
+  return () => window.removeEventListener('plugin-call-service', handler)
+}, [])
+```
+
+**inject.js side:**
+```javascript
+const PLUGIN_NAME = '@aicupa/plugin-my-plugin'
+let callSeq = 0
+
+function callPluginService(method, params) {
+  return new Promise((resolve, reject) => {
+    const cbEvent = 'my-cb-' + (++callSeq)
+    const timer = setTimeout(() => { window.removeEventListener(cbEvent, handler); reject(new Error('timeout')) }, 5000)
+    const handler = (e) => {
+      clearTimeout(timer)
+      window.removeEventListener(cbEvent, handler)
+      const d = e.detail
+      if (d?.ok === false) reject(new Error(d.error || 'failed'))
+      else resolve(d)
+    }
+    window.addEventListener(cbEvent, handler)
+    window.dispatchEvent(new CustomEvent('plugin-call-service', {
+      detail: { pluginName: PLUGIN_NAME, method, params, callbackEvent: cbEvent },
+    }))
+  })
+}
+```
+
+**Key details:**
+- Each call gets a unique `callbackEvent` name to correlate request/response
+- Result is double-wrapped by `pluginCallService` — use the same `unwrap()` helper
+- Generic: works for any plugin, any service method — not coupled to a specific plugin
+- No head view, no bridge iframe, no `postMessage` source verification issues
+
+**When to use over Pattern 8 (head view bridge):**
+- You can add the `plugin-call-service` listener to the main framework
+- Simpler architecture — no hidden iframe, no bridge-ready handshake, no `postMessage` relay
+
 ## inject.js Patterns
 
 ### Singleton Guard
@@ -435,6 +487,8 @@ Some plugins send non-standard `plugin-call` messages to inject.js (missing `id`
 
 No plugin implements a destroy or cleanup function. DOM elements, event listeners, timers, and MutationObservers persist indefinitely. This is a platform limitation — the host does not provide a teardown lifecycle hook.
 
+This is why **disabling** or **uninstalling** a plugin requires a full app reload (`callService('reload', {})`) — the injected `viewScripts` (`<script>` tags in `document.head`) and their side effects cannot be cleaned up by navigation alone. See `references/plugin-api.md` → "Plugin Lifecycle & Reload Behavior" for the full matrix.
+
 ### 7. Duplicated Logic Between View and Service
 
 Some plugins (plugin-todo-warning) implement the same analysis in both view and service. Choose one location based on whether the analysis needs Node.js capabilities or is display-only.
@@ -443,22 +497,61 @@ Some plugins (plugin-todo-warning) implement the same analysis in both view and 
 
 Loading scripts from CDNs at runtime (Tone.js, Live2D) means the plugin breaks offline. Bundle critical dependencies or use `api.fetch()` through the service with caching.
 
-## Decision Flowchart
+### 9. inject.js Cannot Call Service Directly
 
+The host's `plugin-call` handler (`usePluginContributes.ts:161-172`) checks `entries[i][1].contentWindow === source` to verify the message came from a registered iframe. inject.js runs in the main window context — its `postMessage` source is `window`, which fails this check. All `plugin-call` messages from inject.js are silently dropped.
+
+**Solution (preferred):** Use `plugin-call-service` CustomEvent (Pattern 11) — requires adding a listener to the main framework, but no head view needed.
+
+**Solution (no framework changes):** Use a hidden head view iframe as a bridge (Pattern 8).
+
+### 10. React Re-Renders Wipe Permanent DOM Injections
+
+Any DOM elements injected into todo item rows by inject.js will be destroyed when React re-renders the todo tree (on add, edit, delete, reorder, or filter changes). MutationObserver-based re-injection is fragile — it creates flicker and race conditions with React's reconciliation.
+
+**Solution:** Use hover-based lazy decorations (Pattern 10) instead of permanent injection. Show decorations only when the user hovers, and remove them on mouseout. This is immune to React re-renders because no persistent DOM state is maintained.
+
+### 11. Head View Timing — plugin-tree-update Before plugin-init
+
+Head views may receive `plugin-tree-update` before `plugin-init`. If your head view needs `filePath` from `plugin-init` (e.g., to call `scanAllDeps`), the first `plugin-tree-update` will have an empty `filePath`. The second `plugin-tree-update` (which arrives after `plugin-init` completes) will work correctly.
+
+**Workaround:** Guard service calls on `currentFilePath` being non-empty:
+```javascript
+if (msg.type === 'plugin-tree-update') {
+  if (!currentFilePath) return  // skip until plugin-init provides filePath
+  await scanAndSync()
+}
 ```
-Does the plugin need a visible panel/settings UI?
-├─ No: Does it need to modify tree data or respond to context menus?
-│   ├─ Yes → Architecture 2: Service-Only
-│   └─ No: Does it add visual effects to the host page?
-│       ├─ Yes → Architecture 3: Inject-Only
-│       └─ No → Probably not a plugin
-└─ Yes: Does it add visual effects to the host page?
-    ├─ No: Is it a head/topbar/topfix indicator that only reads tree data?
-    │   ├─ Yes → Architecture 6: Client-Side Tree Analysis
-    │   └─ No: Does it need Node.js capabilities?
-    │       ├─ Yes → Architecture 1: View + Service
-    │       └─ No → Simple view with localStorage persistence
-    └─ Yes: Does it need Node.js capabilities?
-        ├─ Yes → Architecture 5: View + Inject + Service
-        └─ No → Architecture 4: View + Inject
+
+### 12. Plugin File Sync During Development
+
+Plugin source at the dev path (e.g., `/Users/you/github/plugin-foo/`) is NOT what the app reads. The app loads plugins from `~/.todoListNative/plugins/<plugin-name>/`. After editing source files, you must:
+1. Copy files: `cp -r ./service.js ./inject.js ./view ./package.json ~/.todoListNative/plugins/@aicupa/plugin-foo/`
+2. Reload or restart the app. Navigating away from the todolist page and back re-fetches contributes and service caches, but injected `viewScripts` require a full reload (`callService('reload', {})`) to pick up changes.
+
+Forgetting either step means your changes won't take effect and debugging will show stale behavior.
+
+### 13. Context Menu `node` May Not Preserve Custom Fields
+
+The `node` parameter passed to contextMenu service methods comes from the host's React state, which may strip custom fields (e.g., `depIds`) that the plugin added to the `.todo` file. The host deserializes tree data and may only keep known fields in memory.
+
+**Problem:** `node.todo.depIds` is `undefined` even though `depIds` exists in the `.todo` file.
+
+**Solution:** Always read custom fields from `api.getTree()` (which reads from the file/store), not from the `node` parameter:
+```javascript
+async setDependency({ node, filePath }) {
+  const data = await api.getTree(filePath)
+  const allTodos = []
+  flattenTodos(getTreeNodes(data), allTodos)
+  const targetInTree = allTodos.find(t => t.id === node.todo.id)
+  return {
+    ok: true,
+    target: {
+      id: node.todo.id,
+      content: targetInTree?.content || node.todo.content,
+      depIds: targetInTree?.depIds || [],  // from tree data, NOT node.todo.depIds
+    },
+  }
+}
 ```
+

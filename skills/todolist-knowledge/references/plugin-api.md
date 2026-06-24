@@ -187,9 +187,47 @@ The `viewjs` field in `package.json` points to a JS file that gets injected into
 
 The injected `<script>` has `data-plugin="pluginName"` attribute for identification.
 
+## Host DOM Selectors
+
+When inject.js needs to interact with todo items in the host DOM:
+
+| Selector | Element | Description |
+|----------|---------|-------------|
+| `[data-todowrapid="<id>"]` | `<Space>` | Row-level wrapper for each todo item. Use for hover event delegation |
+| `[data-todoid="<id>"]` | `<Text>` | Inner text element inside the wrapper. Use for appending inline decorations |
+
+**Relationship:** `[data-todowrapid]` is the parent of `[data-todoid]`. Hook hover events on the wrapper, append visual elements to the text element:
+
+```javascript
+const wrapEl = document.querySelector('[data-todowrapid="123"]')
+const textEl = wrapEl.querySelector('[data-todoid]')
+textEl.appendChild(myTag)
+```
+
 ## Installation & Storage
 
 - **npm**: Plugins with `@aicupa/plugin-` prefix can be searched/installed from the Plugin Marketplace
 - **Local**: Plugin icon → Plugin Market → Install from local → select directory
 - **Storage**: `~/.todoListNative/plugins/` (plugins), `~/.todoListNative/plugins.json` (registry)
+- **Development workflow**: Edit plugin source in your dev directory, then copy files to `~/.todoListNative/plugins/<plugin-name>/` and restart the app. The app reads plugin files from disk on startup — there is no hot-reload
 - **Type hints**: Use JSDoc `@param {import('@aicupa/api').PluginApi} api` for IDE type inference — `@aicupa/api` is a types-only package (install via npm for development)
+
+## Plugin Lifecycle & Reload Behavior
+
+The frontend loads plugin contributes (contextMenus, headViews, topbarViews, topfixViews, viewScripts) once at component mount via `usePluginContributes()`. The todolist page (`/todo_v2`) and plugin page (`/plugins`) are separate React Router routes — navigating between them causes the todolist page to unmount/re-mount, which re-fetches contributes from disk.
+
+| Operation | UI Reload Prompt | Reason |
+|-----------|-----------------|--------|
+| Install (new) | No | First install — navigating back to todolist re-mounts the page, loading fresh contributes |
+| Upgrade | Yes | Updated plugin code may have changed viewScripts or service logic that needs a clean reload |
+| Local install | Yes | Local plugins often replace existing ones; reload ensures consistent state |
+| Enable | Yes | Re-activating a plugin may need to re-inject viewScripts cleanly |
+| Disable | Yes | Already-injected `viewScripts` (`<script>` tags in `document.head`) persist in DOM and cannot be removed by navigation |
+| Uninstall | Yes | Same — injected scripts and their side effects (event listeners, timers, DOM mutations) survive navigation |
+
+Backend details:
+- **Services** (`main`): Loaded lazily via `require()` on first `pluginCallService` call, cached in `loadedServices[name]`. `clearPluginCache()` clears both the in-memory cache and `require.cache`.
+- **Contributes**: `pluginGetContributes()` always reads fresh from disk (registry JSON + each plugin's `package.json`). Checks `enabled === false` to skip disabled plugins.
+- **viewScripts**: Injected as `<script data-plugin="name">` into `document.head`. No teardown — scripts, event listeners, and timers persist indefinitely.
+
+Context menu command execution does NOT show a success toast — only errors are displayed to the user. The host dispatches a `plugin-command-done` CustomEvent after successful execution.

@@ -151,6 +151,51 @@ if (msg.theme?.backgroundColor) {
 
 Then use `.dark .tag-red { ... }` in CSS for dark-mode-specific styles instead of inline color overrides.
 
+## Panel View Auto-Refresh on Tree Changes
+
+Panel views (opened via `plugin-dropdown` modal) do NOT receive `plugin-tree-update` by default — only head/topbar/topfix views do. To auto-refresh a panel view when the tree changes:
+
+1. Main framework dispatches `CustomEvent` after tree updates:
+   ```javascript
+   window.dispatchEvent(new CustomEvent('plugin-tree-updated'))
+   ```
+
+2. `plugin-dropdown` component listens and forwards to the panel iframe:
+   ```javascript
+   window.addEventListener('plugin-tree-updated', () => {
+     iframeRef.current?.contentWindow?.postMessage({ type: 'plugin-tree-update' }, '*')
+   })
+   ```
+
+3. Panel view listens for `plugin-tree-update` and refreshes:
+   ```javascript
+   if (msg.type === 'plugin-tree-update') {
+     await refreshGraph()
+   }
+   ```
+
+This requires a small addition to `plugin-dropdown/index.tsx` (the `plugin-tree-updated` listener).
+
+## Head View as Communication Bridge
+
+A head view can serve as a hidden (height-0) communication bridge between inject.js and the service, rather than displaying UI. This is necessary because inject.js cannot call service methods directly (see `plugin-communication.md` Pattern 8).
+
+**Dual-mode view pattern:** A single `view/index.html` can operate in both bridge mode (when loaded as head view) and panel mode (when opened via plugin-dropdown):
+
+```javascript
+// Mode detection: head view receives plugin-tree-update, panel does not
+let mode = null
+window.parent.postMessage({ type: 'plugin-request-tree' }, '*')
+setTimeout(() => { if (!mode) { mode = 'panel'; initPanel() } }, 500)
+
+window.addEventListener('message', e => {
+  if (e.data?.type === 'plugin-tree-update' && !mode) {
+    mode = 'head'
+    initBridge()
+  }
+})
+```
+
 ## Pitfalls
 
 ### Timeout on callPlugin
