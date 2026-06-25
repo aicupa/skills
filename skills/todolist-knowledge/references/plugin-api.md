@@ -22,6 +22,9 @@ module.exports = (api) => {
 
 | API | Description |
 |-----|-------------|
+| `api.platform` | Current platform: `'electron'` or `'vscode'` |
+| `api.version` | App version string (e.g. `'0.2.223'`) |
+| `api.osPlatform` | OS platform from `process.platform`: `'darwin'` (Mac), `'win32'` (Windows), `'linux'` |
 | `api.reload(filePath?)` | Refresh the todolist view |
 | `api.getTree(filePath?)` | Get the todolist JSON tree data |
 | `api.store(key, value, filePath?)` | Save data to the todolist store |
