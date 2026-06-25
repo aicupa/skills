@@ -1,0 +1,56 @@
+skills/todolist-knowledge/references/plugin-communication.md
+  s_9f101b0402aec4::t_54f2c3134efaee 204,207-208,210-312,370
+  s_9f101b0402aec4::t_c51bf9e7b5a988 504-506
+  s_9f101b0402aec4::t_d7c4b5ac026380 313-369
+  s_f91eb909380733::t_fae6602b74ae9a 530
+  s_a6bc6305ec2032::t_e9cacb3efdc32e 3
+  s_9f101b0402aec4::t_dfe61067c234ca 500-503,507-514,516-523,525-529,531-533
+  s_9f101b0402aec4::t_29db1ea9eed36d 534-555,557
+  s_f91eb909380733::t_a21e7a432e68dd 490-491
+  s_9f101b0402aec4::t_95a51b93c748ac 203,205-206,209
+skills/todolist-knowledge/references/plugin-view.md
+  s_9f101b0402aec4::t_9a6f9cb9ece174 154-198
+skills/todolist-knowledge/references/plugin-api.md
+  s_9f101b0402aec4::t_bcf422fcac9e76 190-206,212
+  s_f91eb909380733::t_df5ead3c87e3d2 221-224
+  s_f91eb909380733::t_5622634e4a02fa 214-220,225-233
+skills/todolist-knowledge/references/plugin-architecture.md
+  s_a6bc6305ec2032::t_b13843ac4f8bba 1-177
+skills/todolist-knowledge/SKILL.md
+  s_9f101b0402aec4::t_c71dbc7d031bf2 3
+  s_a6bc6305ec2032::t_55743e55c6b702 8,14-19,21,25,30,32,34,37-40,43,45,47-52
+skills/todolist-knowledge/references/app-config.md
+  s_a6bc6305ec2032::t_211f689a7c8f67 1-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.11",
+  "base_commit_sha": "24dc331d88a14bcb106ac646566a992c113aed41",
+  "prompts": {},
+  "sessions": {
+    "s_9f101b0402aec4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d55a92e4-bb2e-4f86-9ba6-307725771dc8",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "muhai <muhai.li@tuya.com>"
+    },
+    "s_a6bc6305ec2032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "83079af9-02d2-4fd2-a0d3-ed5d7e54e59a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "muhai <muhai.li@tuya.com>"
+    },
+    "s_f91eb909380733": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5da29d0f-f7e4-45c4-b780-6cd9712d54dd",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "muhai <muhai.li@tuya.com>"
+    }
+  }
+}
