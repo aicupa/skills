@@ -8,7 +8,7 @@ All fields live under the `todotree` root key.
 {
   // Required
   tree: ITodoTree[]
-  expandKeys: (string | number)[]
+  expandKeys: number[]            // MUST all be numbers (never strings); node keys of expanded nodes, kept sorted
   add_mode: 'top' | 'bottom'
   timelines: number[]            // Ordered todo ids for timeline strip; can be []
 
@@ -130,6 +130,13 @@ Tags are defined in `todotree.tags` and referenced by string key in `todo.tags`:
 ## Tip vs Child Nodes
 
 Prefer child nodes for supplemental content. `tip` is hidden in the UI until enabled — use only when the user explicitly wants a Markdown annotation on a single item.
+
+## expandKeys Rules
+
+- **All entries must be numbers** — never strings. When writing programmatically, normalize and sort: `store.expandKeys = [...new Set([...store.expandKeys].map(Number))].sort((a, b) => a - b)`
+- Each entry is a **tree node's own `key` field** (`node.key`), NOT `node.todo.key` (which is usually absent) and not `node.todo.id`. In practice `node.key` equals `node.todo.id`, but always read/write `node.key`.
+- **Expand all by default**: collect the `key` of every node that has children, and put all of them into `expandKeys`.
+- `expandKeys` is the in-board todo-tree expansion state; the file-explorer expansion is a separate field (`expandedKeys`) — don't confuse them.
 
 ## Complete Example
 
