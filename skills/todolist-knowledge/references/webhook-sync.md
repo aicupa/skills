@@ -65,3 +65,4 @@ If both curls return and the second echoes the snapshot, the webhook URL is corr
 - The board server allows cross-origin requests (`*`), so posts from the app work out of the box.
 - Events also fire on reads (opening files, plugin/terminal activity) — the board handles them as no-ops; nothing to filter on your side.
 - Keep `uid` and `file` identical wherever you reference the board file (webhook URL, board page URL, manual curls); the board keys stored data by `uid` + `file`.
+- **currentKey auto-switch**: when a `Store` event writes a **newly created** board-side file, the server automatically points `currentKey`/`currentName` at it, so the web board opens the new file by default. To switch to an *existing* file later, POST a `saveConfig` with `params: { currentKey: "<board-side full path>", currentName: "<name>" }` (board-side paths look like `/app/web/server/tree/<file>`).
