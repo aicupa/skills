@@ -88,10 +88,45 @@ A common pattern is one `.todo` file per week (`MMDD-MMDD.todo`). Rollover recip
 7. Push the store to the web board (see `webhook-sync.md`). On the board, the first `Store` write of a *new* file auto-switches `currentKey` to it.
 8. Remind anyone else syncing the repo (other machines' app instances) to pull — a stale client saving over the tree will clobber the pushed state.
 
+## Multi-Writer Sync (Human + Agent on One Git-Backed Board)
+
+When a person (via the app) and an agent (via scripts editing the file / pushing the board) both write the same `.todo` repo, treat it like any shared repo with an *additional* twist — the app saves whole-tree snapshots, not patches:
+
+- **Pull before every scripted edit.** The other writer may have pushed since your last read; editing a stale tree and pushing clobbers their changes.
+- **Dedupe by content, not by id.** Concurrent writes produce duplicate nodes with the *same content but different ids* — an id-based check will happily pass and add a second copy. Before adding an item, recursively search the tree for the content keyword first.
+- **Push promptly, then tell the other end to pull.** A stale app instance that saves after your push will overwrite the board with its old tree. Don't leave long windows of "edited locally, not yet pushed".
+- Prefer one writer at a time per file when you can; when you can't, keep edit sessions short and always end them with pull → edit → push to the board → notify.
+
+## Done-as-Archive
+
+Don't physically delete completed items — check `done: true` and leave them in place:
+
+- Old weekly files *are* the archive: completed items stay behind in the file of the week they were finished, and monthly/quarterly reviews read those files as history. Nothing extra to maintain.
+- "Decided not to do (for now)" items also stay, marked in the wording (e.g. a "(deferred)" note with the reason) rather than deleted — the decision itself is worth remembering.
+- Deleting done items loses your review material and breaks the "board = what happened" property; the cost of keeping them is one cleared checkbox.
+
+## Tree Hygiene
+
+Periodically tidy the structure, not just the items:
+
+- **Collapse scattered siblings** into their semantic parent (five loose "fix login UI" notes under different sections → children of one "login UI" item).
+- **Merge duplicate themes** into a single item (note the merge in the wording once merged).
+- **When dissolving a section**: move its done items to the done-archive section, return unfinished items to their original/home sections — don't drop either.
+- Before adding anything, search by content keyword (see Multi-Writer Sync above) — most board clutter is near-duplicates that a keyword check would have caught.
+
+## `desc` as the Summary Slot
+
+The file-level `desc` is the first thing shown when the board opens — use it as a structured summary, not scratch notes:
+
+- Keep a fixed shape: a short **period summary** (a few bullet points: what this week/month is about), then a separate headed **risk list** (bullets, one risk each). A fixed shape keeps it scannable; free-form prose tends to collapse into a wall of text.
+- Rewrite it at every rollover — a stale desc describing last period is worse than none.
+- It pairs well with the milestone tags: desc answers "what is this period about", milestones answer "what lands when".
+
 ## Pre-push Checklist
 
 - `expandKeys` are all numbers
 - every id in `todo.tags` exists in `todotree.tags`
 - ids unique within the file; `date` seconds vs `start`/`end` ms not mixed
+- no near-duplicate content introduced (search by keyword before adding)
 - verify key nodes by content (recursive search — top-level-only search silently misses nested nodes) **before** the line that pushes
 - keep any assertion/verification code out of the push path — an exception between "saved file" and "pushed board" leaves the two out of sync
