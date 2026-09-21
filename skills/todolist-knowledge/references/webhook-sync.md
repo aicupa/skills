@@ -85,6 +85,17 @@ curl -s -X POST "$BOARD/api?uid=$UID&file=$FILE" -H 'Content-Type: application/j
 
 A `Store` whose `file`/`path` doesn't exist yet **creates** the board-side file and auto-points `currentKey` at it (see Notes) — that's the usual way a new period file goes live.
 
+### Token economy: push with a local script, never inline the store
+
+A full-snapshot `Store` push looks heavy but costs the agent **zero tokens** when done right: the payload travels script → board over HTTP and never enters the model's context. The anti-pattern is *inlining* the store — reading the whole JSON into the conversation, editing it there, and emitting the full payload as generated text. That pays for the same kilobytes twice (once reading, once writing), invites transcription errors, and still needs a tool call to send anyway.
+
+The correct loop for an LLM agent:
+
+- The model produces only the **edit intent** — a short local script (Python/Node/bash+curl) that reads the authoritative `.todo` file, applies the change, and POSTs the whole store.
+- Verify by printing a **small summary** (a few nodes' `content`/`done`/`tags`), never `print(store)`.
+- Don't `GetStore` the full tree into context to "check" — have the script extract just the fields you need (title, node count, a node by id).
+- Keep the `.todo` files in a git repo as the source of truth. Then a wiped board (e.g. a redeployed container without a volume) is just "re-run the push script for every file" — push all files, then `saveConfig` to restore `currentKey` and explorer `expandedKeys`.
+
 
 - The Webhook setting is available in the VSCode extension and Desktop app, and is stored **per todo file** — switching the working file switches (or drops) the sync target. Configure it once per file you want synced.
 - The board server allows cross-origin requests (`*`), so posts from the app work out of the box.
