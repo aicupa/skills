@@ -96,6 +96,25 @@ The correct loop for an LLM agent:
 - Don't `GetStore` the full tree into context to "check" — have the script extract just the fields you need (title, node count, a node by id).
 - Keep the `.todo` files in a git repo as the source of truth. Then a wiped board (e.g. a redeployed container without a volume) is just "re-run the push script for every file" — push all files, then `saveConfig` to restore `currentKey` and explorer `expandedKeys`.
 
+## Redeploying the Docker Board Wipes It — Prevention & Restore
+
+**Why it wipes:** the board keeps everything *inside the container* — todo files under `/app/web/server/tree`, plus its `currentKey` / explorer state in the container's config. `docker run` a fresh container without a volume and the board comes up empty. (This is by design for a read-only board backed by a git repo: the repo is the data, the board is a projection.)
+
+**Prevention:** mount a volume over the tree dir if you want the board itself to survive redeploys:
+
+```bash
+docker run -d -p 3000:3000 \
+  -v /path/on/host/todolist-data:/app/web/server/tree \
+  saber2pr/todolist-app:master
+```
+
+**Restore (board already wiped):** with the `.todo` files in a git repo as the source of truth, recovery is pure API calls — no backups needed:
+
+1. **Re-push every `.todo` file** from the repo: for each file POST a `Store` with its full `todotree` and `eventId = version` (script it — see Token economy above; skip any file that shouldn't be pushed to this board, e.g. ones holding secrets).
+2. Ordering only matters for the *last* push: the last newly-created file becomes `currentKey`. Push the file you want opened by default (this week's / the current one) last — or fix it afterwards in step 3.
+3. **Restore board config**: POST `saveConfig` with `currentKey` (board-side full path, e.g. `/app/web/server/tree/2026/W38.todo`), `currentName`, `currentDir`, and `expandedKeys` — the absolute paths of every directory to auto-expand in the explorer sidebar.
+4. **Verify**: `getConfig` shows the right `currentKey`/`expandedKeys`; a `GetStore` on the default file returns the expected `title`, root-node count and `version`.
+
 
 - The Webhook setting is available in the VSCode extension and Desktop app, and is stored **per todo file** — switching the working file switches (or drops) the sync target. Configure it once per file you want synced.
 - The board server allows cross-origin requests (`*`), so posts from the app work out of the box.
