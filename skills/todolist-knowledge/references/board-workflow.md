@@ -88,6 +88,13 @@ A common pattern is one `.todo` file per week (`MMDD-MMDD.todo`). Rollover recip
 7. Push the store to the web board (see `webhook-sync.md`). On the board, the first `Store` write of a *new* file auto-switches `currentKey` to it.
 8. Remind anyone else syncing the repo (other machines' app instances) to pull — a stale client saving over the tree will clobber the pushed state.
 
+## Simple Mode for Read-Only Boards
+
+`simpleMode` is a store-level boolean (`todotree.simpleMode`) the renderer reads on load: when `true`, node rows show the date instead of edit controls, and extra tool areas/progress bars are hidden — a clean look for a board people only *look* at.
+
+No code change needed: since the agent controls the store, just set `simpleMode: true` in the store you push (and keep it set on subsequent pushes). This is the recommended default for a Docker-deployed read-only board; the editor clients (vscode / desktop / remote) read the same field, so toggle it there via the view options if you want it off while editing.
+
+
 ## Multi-Writer Sync (Human + Agent on One Git-Backed Board)
 
 When a person (via the app) and an agent (via scripts editing the file / pushing the board) both write the same `.todo` repo, treat it like any shared repo with an *additional* twist — the app saves whole-tree snapshots, not patches:
