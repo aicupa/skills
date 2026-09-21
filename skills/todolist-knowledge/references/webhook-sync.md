@@ -59,7 +59,32 @@ curl -X POST 'http://<board-host>:<port>/api?uid=data&file=todo.work' \
 
 If both curls return and the second echoes the snapshot, the webhook URL is correct — paste the same URL into Settings → Webhook.
 
-## Notes
+## Agent Direct Read/Write (bypassing the app)
+
+The board's `/api` is plain HTTP JSON — a script or agent can maintain the board without the app in the loop at all. The Verify curls above are the basic shape; these are the details that matter once you do it for real:
+
+**1. `eventId` should mirror the file's `version`.** Pass `int(value.version)` (the store's timestamp string as a number), matching what the app sends. The example above uses `1` for a one-off test; for ongoing writes, a stale/regressed `eventId` can make the board treat your push as an older event than the file it already holds. Bump `version` to a fresh `Date.now()` timestamp on every edit and carry it into `eventId`.
+
+**2. Send both `file` in the URL and `path` in params.** They name the same board-side file; keep them identical (`uid` too) wherever the file is referenced.
+
+**3. `Store` is a full-snapshot overwrite, not a merge.** `params.value` must be the *entire* store object — `tree`, `expandKeys`, `tags`, `title`, `desc`, `version`, all of it. Pushing a partial object (say, just `tree`) writes a file missing the other fields and the board renders it broken or resets it. Read (`GetStore`) → mutate in memory → write back the whole store.
+
+Round-trip recipe:
+
+```bash
+BOARD='http://<board-host>:<port>'; UID='data'; FILE='2026/W38.todo'
+
+# read current store
+curl -s -X POST "$BOARD/api?uid=$UID&file=$FILE" -H 'Content-Type: application/json' \
+  -d '{"service":"GetStore","params":{"key":"todotree","path":"'"$FILE"'"}}'
+
+# ...edit the JSON (keep it a complete store), set version = now-ms, then:
+curl -s -X POST "$BOARD/api?uid=$UID&file=$FILE" -H 'Content-Type: application/json' \
+  -d '{"service":"Store","params":{"key":"todotree","path":"'"$FILE"'","value":<entire-store>},"eventId":<version-as-number>}'
+```
+
+A `Store` whose `file`/`path` doesn't exist yet **creates** the board-side file and auto-points `currentKey` at it (see Notes) — that's the usual way a new period file goes live.
+
 
 - The Webhook setting is available in the VSCode extension and Desktop app, and is stored **per todo file** — switching the working file switches (or drops) the sync target. Configure it once per file you want synced.
 - The board server allows cross-origin requests (`*`), so posts from the app work out of the box.

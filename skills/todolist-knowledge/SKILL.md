@@ -18,7 +18,7 @@ Reference for the Todolist desktop app (Electron). Read the relevant reference f
 | `references/plugin-architecture.md` | Choosing a plugin architecture — 7 architecture types (view+service, service-only, inject-only, view+inject, triple-layer, client-side tree analysis, remote view), quick reference table, decision flowchart |
 | `references/plugin-view.md` | Building plugin views — message protocol, complete HTML template, client-side tree analysis pattern, i18n/lang detection, dark mode, panel auto-refresh, head view bridge, dual-mode view pattern, pitfalls |
 | `references/plugin-communication.md` | Plugin communication patterns — callPlugin RPC, double-unwrap, view-to-inject messaging, localStorage bridge, push-based tree updates, CustomEvent bridge, `plugin-call-service` CustomEvent, hover-based lazy decorations, inject.js patterns (singleton, MutationObserver, draggable), common pitfalls |
-| `references/webhook-sync.md` | Webhook sync to a self-hosted web board (todolist-app docker image) — Settings→Webhook setup pointing at the board's `/api`, `uid`/`file` query params, event effects table (`Store` = todo tree + node expansion snapshot, `saveConfig` = explorer sidebar expansion), verify curls, notes |
+| `references/webhook-sync.md` | Webhook sync to a self-hosted web board (todolist-app docker image) — Settings→Webhook setup pointing at the board's `/api`, `uid`/`file` query params, event effects table (`Store` = todo tree + node expansion snapshot, `saveConfig` = explorer sidebar expansion), verify curls, agent direct read/write (eventId mirrors version, Store is full-snapshot overwrite, read→mutate→write whole store), notes |
 
 ## Essential Rules
 
