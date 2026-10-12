@@ -25,6 +25,44 @@ todo['end']  = day(2026, 9, 24) * 1000                   # precise end, ms
 - A range renders as an occupied block spanning those days on the calendar view.
 - Only put `date` on items that genuinely have a schedule — milestone-level or this-week work, not every leaf task.
 
+## How the Calendar View Renders `date` Ranges
+
+Once an item has a `date` range, the calendar/schedule view draws it like a real calendar:
+
+- **Single-day range** (`start == end`) → a small colored dot in the day cell.
+- **Multi-day range** → one **continuous colored bar** spanning the covered days, laid out in
+  **lanes per week** so overlapping ranges never collide. Bars are truncated at week (and month)
+  boundaries and continue in the next row; **only the real start/end get rounded corners** — a bar
+  that continues from the previous week stays flat on that side.
+- **Overflow is summarized, never dropped**: a cell shows at most a few bar lanes plus a few dots,
+  and anything beyond that becomes `+N`. Without this, items silently disappear from the calendar
+  and the board lies about what is scheduled.
+- **Cell affordances**: today gets a filled marker, the selected day is highlighted, days outside
+  the displayed month are dimmed, and rest days (see `restDays` in `todo-format.md`) are marked.
+- **Day list under the grid** shows the selected day's items (spanning items included) with title,
+  range and color; clicking a row expands the full detail (time, status, tags, children).
+- **Color** comes from `todo.level` — `default` blue / `warning` amber / `danger` red /
+  `success` green / `secondary` grey — and completed items render greyed with a strikethrough.
+
+This is a built-in page of the app (alongside the plan/tree view and the milestone view), not a
+plugin view — `plugin-view.md` does not apply to it.
+
+### Interaction rules worth keeping (each of these was a real bug)
+
+- **Lane-pack bars; never re-render the same span as a block in every cell it covers.** Repeating
+  a multi-day item's full text inside each covered day is what makes a week with several
+  overlapping ranges unreadable. One item occupies one lane across the week row.
+- **Do not attach click handlers to the bars.** A bar spans several columns; a handler that maps
+  "clicked bar → the item's start day" makes clicking on Wednesday select Monday, which reads to
+  the user as "the day list did not refresh". Keep bars `pointer-events: none` so the click falls
+  through to the day cell underneath and selects the day that was actually clicked.
+- **Key the day list by the selected date.** Deriving the list from state is not enough if the
+  container element is reused — a stale scroll offset or an expanded row survives the switch.
+  Remounting on date change makes "switch day → list is correct" unconditional.
+- **Render item detail inline rather than in a floating popover.** A right-placed popover inside a
+  bottom panel has no room, flips, and with a root-level popup container ends up over the sidebar.
+  An expanding row has no positioning failure mode.
+
 ## Monthly Milestones via `timeline` Tags
 
 The milestone/timeline page aggregates every todo whose tag has `timeline: true`. The convention for *monthly* milestones:
