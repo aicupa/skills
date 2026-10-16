@@ -96,6 +96,53 @@ The correct loop for an LLM agent:
 - Don't `GetStore` the full tree into context to "check" — have the script extract just the fields you need (title, node count, a node by id).
 - Keep the `.todo` files in a git repo as the source of truth. Then a wiped board (e.g. a redeployed container without a volume) is just "re-run the push script for every file" — push all files, then `saveConfig` to restore `currentKey` and explorer `expandedKeys`.
 
+## Reading a Calendar Through the Board API (CalDAV service)
+
+The board's `/api` is a **generic service dispatcher**: any `{"service":"<name>","params":{…}}` POST
+runs that service. Besides `GetStore` / `Store` / `getConfig` / `saveConfig`, a deployment that was
+given CalDAV credentials also exposes **`caldav`** — a read-only proxy to a Feishu calendar. That lets
+an agent read the meeting schedule from the *same* address it already uses for todos, instead of
+carrying a second set of credentials.
+
+```bash
+POST <board>/api?uid=data
+Content-Type: application/json
+
+{"service":"caldav","params":{}}
+```
+
+```json
+{ "serviceUri": "caldav",
+  "response": {
+    "configured": true,
+    "calendars": [{ "name": "…", "ctag": "…", "cached": false, "count": 54 }],
+    "events": [{
+      "uid": "9e4015a6-…",
+      "summary": "【发布评审】AI生成面板1.7",
+      "description": "视频会议: https://vc.feishu.cn/j/108252674\n",
+      "location": "3-F Hokkaido (8)",
+      "dtstart": "20260918T140000",
+      "dtend": "20260918T150000",
+      "allDay": false,
+      "calendar": "…"
+    }]
+  } }
+```
+
+Things to know when consuming it:
+
+- **`params.force: true`** bypasses the server-side cache. A plain call is cheap: the server only
+  refetches the calendar when its `ctag` changes (plus a short throttle on the ctag probe itself).
+- **`configured: false`** with empty arrays means the deployment has no CalDAV credentials —
+  treat it as "no calendar configured", not an error.
+- **Time values are ICS, not ISO**: `20260918T140000` is local *floating* time; a trailing `Z` means
+  **UTC** and must be converted to local. All-day events come as `20260918` with `allDay: true`,
+  and their `dtend` is the **next day (exclusive)** — subtract one day to get the last day.
+- **`location`** is the meeting room (empty string for online-only meetings); **`description`**
+  usually carries the video-meeting URL.
+- Credentials live in the **deployment's environment** (`CALDAV_USER` / `CALDAV_PASS`, optionally
+  `CALDAV_URL`) — never in the `.todo` file, which is usually a git-tracked repo.
+
 ## Redeploying the Docker Board Wipes It — Prevention & Restore
 
 **Why it wipes:** the board keeps everything *inside the container* — todo files under `/app/web/server/tree`, plus its `currentKey` / explorer state in the container's config. `docker run` a fresh container without a volume and the board comes up empty. (This is by design for a read-only board backed by a git repo: the repo is the data, the board is a projection.)
