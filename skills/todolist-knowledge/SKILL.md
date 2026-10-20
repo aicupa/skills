@@ -11,7 +11,7 @@ Reference for the Todolist desktop app (Electron). Read the relevant reference f
 
 | File | When to Read |
 |------|-------------|
-| `references/todo-format.md` | Working with `.todo` files — type definitions, field details, tag system, examples, common operations |
+| `references/todo-format.md` | Working with `.todo` files — type definitions, field details, tag system, custom top-bar `links`, examples, common operations |
 | `references/board-workflow.md` | Maintaining a planning board — calendar scheduling (`date` ranges, sec vs ms), how the calendar view renders ranges (day dots vs multi-day bars, per-week lane packing, boundary truncation, `+N` overflow, selection/rest-day affordances) plus the interaction rules that keep it correct, monthly milestone tags (`timeline: true`, anti-pileup month splitting), focus view, weekly rolling file rollover, simpleMode default for read-only boards, multi-writer sync (pull-first, content dedup), done-as-archive, tree hygiene, `desc` summary slot, pre-push checklist |
 | `references/app-config.md` | App configuration (`~/.todoListNative.json`) — all config fields, related paths, explorer filtering |
 | `references/plugin-api.md` | Building plugin services — API method table, pluginContributes spec (contextMenus, events, views.head/topbar/topfix), installation, lifecycle & reload behavior |

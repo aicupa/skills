@@ -36,6 +36,9 @@ All fields live under the `todotree` root key.
   aiCommand?: string
   openCommand?: string
 
+  // Optional — custom quick links rendered in the calendar view top bar
+  links?: IQuickLink[]
+
   // Optional — tag catalog
   tags?: {
     [key: number]: {
@@ -48,6 +51,44 @@ All fields live under the `todotree` root key.
   }
 }
 ```
+
+## Custom Quick Links (`links`)
+
+`todotree.links` renders extra buttons in the **calendar (`schedule`) view's top bar** —
+to the left of the view switcher (plan / schedule / timeline). Each button opens its `url`
+in a new tab. Use it to hang external dashboards or tools off a board without touching code.
+
+```typescript
+type IQuickLink = {
+  label: string        // button text
+  url: string          // opened with target="_blank"
+  highlight?: boolean  // violet gradient + breathing halo; meant for AI-style entries
+}
+```
+
+```json
+{
+  "todotree": {
+    "page": "schedule",
+    "links": [
+      { "label": "Agent Dashboard", "url": "https://example.com/agent/", "highlight": true },
+      { "label": "Wiki", "url": "https://wiki.example.com/" }
+    ]
+  }
+}
+```
+
+Rules and caveats:
+
+- **Calendar view only.** The plan and timeline views don't render these buttons.
+- `highlight: true` gets a violet gradient (`#7c3aed → #a855f7`) plus a pulsing halo;
+  keep it for the one primary AI entry, use plain links for the rest.
+- **Mobile renders icon-only** (UA-based `checkIsMob()`): the label is dropped so the file
+  title keeps its room. Desktop keeps the label and a `title` tooltip.
+- **The field survives saves.** The app rebuilds the store from an explicit field list on
+  save, so a build that doesn't know about `links` will drop it the first time the file is
+  edited there — only write it against a build that supports it.
+- Order in the array is the render order; multiple links are fine.
 
 ## Tree Node (ITodoTree)
 
