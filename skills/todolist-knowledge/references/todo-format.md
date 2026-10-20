@@ -81,10 +81,10 @@ type IQuickLink = {
 Rules and caveats:
 
 - **Calendar view only.** The plan and timeline views don't render these buttons.
-- `highlight: true` renders as a **transparent button with a 1px violet border**
-  (`rgba(124,58,237,.55)` border / `#a855f7` text) plus a faint pulsing halo — deliberately
-  low-key so it doesn't compete with the view switcher. Keep it for the one primary AI entry,
-  use plain links for the rest.
+- `highlight: true` renders as a **transparent button with a 1px light-violet border**
+  (`rgba(192,132,252,.6)` border / `#c084fc` text, hover `#e9d5ff`) plus a faint pulsing halo —
+  deliberately low-key so it doesn't compete with the view switcher. Keep it for the one primary
+  AI entry, use plain links for the rest.
 - Button metrics match the view switcher on the right (`Radio.Button size="small"`):
   **24px tall**, 4px radius, 12px font.
 - **Mobile renders icon-only** (UA-based `checkIsMob()`): the label is dropped so the file
