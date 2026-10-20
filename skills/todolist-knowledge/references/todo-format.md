@@ -80,7 +80,8 @@ type IQuickLink = {
 
 Rules and caveats:
 
-- **Calendar view only.** The plan and timeline views don't render these buttons.
+- **All three views.** The buttons sit in the title bar of the plan, calendar and milestone views alike,
+  left of the view switcher.
 - `highlight: true` renders as a **transparent button with a 1px light-violet border**
   (`rgba(192,132,252,.6)` border / `#c084fc` text, hover `#e9d5ff`) plus a faint pulsing halo —
   deliberately low-key so it doesn't compete with the view switcher. Keep it for the one primary
